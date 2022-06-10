@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Home
+{% endblock %}
+
+
+{% block content %}
+      
+<div class = 'container'> 
+  <h1>About the project...</h1>
+  <h2>{{stuff | striptags}}</h2>
+</div>
+
+{% endblock %}
