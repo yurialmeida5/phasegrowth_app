@@ -1,15 +1,28 @@
-from flask import Flask, render_template, request, redirect
+#Flask, render_template, request, redirect, flash
+from flask import *
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from flask_login import UserMixin, login_user, LoginManager, login_required, logout_user, current_user
-
+from flask_wtf import FlaskForm
+from wtforms import StringField, SubmitField, EmailField, PasswordField
+from wtforms.validators import DataRequired, Email
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = "admin12345"
+
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///user.db'
 
 # Initilize the database
 db = SQLAlchemy(app)
+
+#### Create a Form Class
+class UserForm(FlaskForm):
+    name = StringField("Name", validators = [DataRequired()])
+    e_mail =  EmailField('E-mail', validators = [DataRequired(), Email()])
+    password = PasswordField("Password", validators = [DataRequired()])
+    submit = SubmitField('Submit')
+
 
 # Create db model
 
@@ -34,70 +47,71 @@ def home():
     stuff = 'Test <strong> BOLD </strong>'
     return render_template("home.html", stuff = stuff)
 
-@app.route('/dashboard')
-def dashboard():
-    names = ['test', 'test1']
-    return render_template('dashboard.html', names = names)
-
 
 @app.route('/users', methods =['POST', 'GET'])
 def users():
-    
-    if request.method == 'POST':
         
-        user_name_check = request.form.get('name')
-        e_mail_check = request.form.get('e_mail')
-        password_check = request.form.get('password')
+    name = None
+    e_mail = None
+    password = None
+    form = UserForm()
 
-        if not user_name_check or not e_mail_check or not password_check:
-            error_statement = 'Please fill all the forms.'
-            users = Users.query.order_by(Users.date_created)
-            return render_template('users.html', error_statement = error_statement, user_name_check = user_name_check, 
-            e_mail_check = e_mail_check, password_check = password_check, users = users)
-        else:
-            user_name = request.form['name']
-            user_e_mail = request.form['e_mail']
-            user_password = request.form['password']
-            new_user = Users(name= user_name, e_mail = user_e_mail , password = user_password )
-            # push to database
-            try:
-                db.session.add(new_user)
-                db.session.commit()
-                return redirect('/users')
-            except:
+    # Validate Form
+    if form.validate_on_submit():
+        flash("User added sucessfully!")
+        name = form.name.data
+        form.name.data = ''
+        e_mail = form.e_mail.data
+        form.e_mail.data = ''
+        password = form.password.data
+        form.password.data = ''
+        
+        users = Users.query.order_by(Users.date_created)
+
+        new_user = Users(name= name, e_mail = e_mail, password = password )
+        # push to database
+        try:
+            db.session.add(new_user)
+            db.session.commit()
+            return redirect('/users')
+        except:
                 return "There was an error adding the user..."
-            return "you clicked the button"
+        return "you clicked the button"
     else:
         users = Users.query.order_by(Users.date_created)
-        return render_template('users.html', users = users)
+        return render_template('users.html', users = users, form = form) 
 
 
 @app.route('/update/<int:id>', methods = ['POST', 'GET'])
 def update(id):
-    user_to_update = Users.query.get_or_404(id)
+    
     users = Users.query.order_by(Users.date_created)
-    if request.method == 'POST':
+    form = UserForm()
 
-        user_name_check = request.form.get('name')
-        e_mail_check = request.form.get('e_mail')
-        password_check = request.form.get('password')
-
-        if not user_name_check or not e_mail_check or not password_check:
-            error_statement = 'Please fill all the forms.'
-            users = Users.query.order_by(Users.date_created)
-            return render_template('users.html', error_statement = error_statement, user_name_check = user_name_check, 
-            e_mail_check = e_mail_check, password_check = password_check, users = users)
-        else:
-            try:
-                user_to_update.name = request.form['name']
-                user_to_update.e_mail = request.form['e_mail']
-                user_to_update.password = request.form['password']
-                db.session.commit()
-                return redirect('/users')
-            except:
-                return "There was an error updating the user..."
+    # Validate Form
+    if form.validate_on_submit():
+        flash("User added sucessfully!")
+        name = form.name.data
+        form.name.data = ''
+        e_mail = form.e_mail.data
+        form.e_mail.data = ''
+        password = form.password.data
+        form.password.data = ''
+    # push to database
+        try:
+            
+            user_to_update = Users.query.get_or_404(id)
+            user_to_update = Users.query.get(user_to_update)
+            user_to_update.name = name
+            user_to_update.e_mail = e_mail
+            user_to_update.password = password
+            db.session.commit()
+            return redirect('/users')
+        except:
+                return "There was an error adding the user..."
+        return "you clicked the button"
     else:
-            return render_template('update.html' , user_to_update = user_to_update, users = users)
+        return render_template('update.html' , users = users, form = form)
 
 @app.route('/delete/<int:id>')
 def delete(id):
@@ -117,7 +131,9 @@ def page_not_found(e):
 
 @app.errorhandler(500)
 def page_not_loading(e):
-    return  render_template('500.html'), 500
+    return  render_template('400.html'), 500
+
+
 
    
 
